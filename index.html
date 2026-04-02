@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GATE 2027 · Shriyash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:          #06060d;
+      --surface:     #0c0c18;
+      --border:      rgba(196,162,70,0.1);
+      --border-hi:   rgba(196,162,70,0.22);
+      --gold:        #c4a246;
+      --gold-bright: #debb60;
+      --gold-dim:    #74602a;
+      --gold-glow:   rgba(196,162,70,0.07);
+      --text:        #dbd3be;
+      --text-sub:    #706a58;
+      --text-dim:    #383430;
+      --red:         #b85248;
+      --green:       #4e9460;
+      --font:        'Manrope', system-ui, sans-serif;
+      --mono:        'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Noise grain — keeps the dark background alive */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.022;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Ambient glow behind timer */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 55%; left: 25%;
+      transform: translate(-50%, -50%);
+      width: 500px; height: 500px;
+      background: radial-gradient(ellipse, rgba(196,162,70,0.028) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── App grid: header · countdown strip · main ─────────── */
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 48px 78px 1fr;
+      position: relative;
+      z-index: 1;
+      animation: fadeUp 0.55s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+    }
+
+    .header-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* ── Countdown Strip — dedicated full-width row ─────────── */
+    /*
+       Moved out of the header so it can breathe and be read at a glance.
+       This is the main motivational anchor: every glance = time pressure = action.
+    */
+    .cd-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(196,162,70,0.018) 0%, transparent 100%);
+      position: relative;
+    }
+
+    /* Thin gold line at top of strip for visual weight */
+    .cd-strip::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(196,162,70,0.18) 30%, rgba(196,162,70,0.18) 70%, transparent 100%);
+    }
+
+    .cd-label {
+      font-size: 0.52rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      margin-right: 22px;
+    }
+
+    .cd-units {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .cd-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 0 10px;
+    }
+
+    .cd-num {
+      font-family: var(--mono);
+      font-size: 2rem;
+      font-weight: 300;
+      color: var(--gold-bright);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      min-width: 2ch;
+      text-align: center;
+    }
+
+    .cd-lbl {
+      font-size: 0.46rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .cd-sep {
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      color: var(--gold-dim);
+      opacity: 0.35;
+      margin-bottom: 14px;
+      padding: 0 2px;
+    }
+
+    .cd-gate-label {
+      margin-left: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .cd-gate-title {
+      font-size: 0.56rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+    }
+
+    .cd-gate-date {
+      font-size: 0.5rem;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+
+    /* ── Main: two panels split by 1px divider ──────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1px 390px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .v-div { background: var(--border); align-self: stretch; }
+
+    /* ── LEFT PANEL ──────────────────────────────────────────── */
+    .left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 44px 28px;
+      overflow: hidden;
+      margin-top: -20px; /* subtle upward nudge for the timer */
+    }
+
+    /* Quote — the heart of this page */
+    .quote-wrap {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      position: relative;
+      padding: 22px 32px;
+    }
+
+    /* Decorative large opening quote mark */
+    .quote-wrap::before {
+      content: '\201C';
+      position: absolute;
+      top: -4px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 5rem;
+      font-family: Georgia, serif;
+      line-height: 1;
+      color: rgba(196,162,70,0.08);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Subtle gold frame lines left and right */
+    .quote-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-left: 1px solid rgba(196,162,70,0.07);
+      border-right: 1px solid rgba(196,162,70,0.07);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    .qt {
+      font-size: 1.05rem;
+      font-weight: 300;
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.75;
+      max-width: 500px;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+      letter-spacing: 0.01em;
+      position: relative;
+      z-index: 1;
+    }
+
+    .qt.show { opacity: 1; }
+
+    .qs {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      opacity: 0;
+      transition: opacity 0.8s ease 0.15s;
+      margin-top: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .qs.show { opacity: 1; }
+
+    /* Gold dot divider between quote and attribution */
+    .qs::before {
+      content: '· ';
+      color: rgba(196,162,70,0.3);
+      letter-spacing: 0.05em;
+    }
+
+    .rule {
+      width: 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.25), transparent);
+      margin: 0 auto 22px;
+    }
+
+    /* ── THE TIMER — as big as it can be ───────────────────────
+       Large font = high information density at a glance.
+       Every second that passes is visible and motivating.
+    */
+    .timer-block { text-align: center; width: 100%; }
+
+    .timer-num {
+      font-family: var(--mono);
+      font-size: 7.8rem;
+      font-weight: 300;
+      letter-spacing: 0.02em;
+      color: var(--gold-bright);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s, opacity 0.3s;
+    }
+
+    /* Paused state — blink the timer, clear signal that it's not running */
+    @keyframes timerBlink {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 0.12; }
+    }
+
+    .timer-num.paused {
+      color: var(--text-dim);
+      opacity: 0.5;
+      animation: timerBlink 1.1s ease-in-out infinite;
+      /* Disable transition so it doesn't fight the animation */
+      transition: color 0.3s;
+    }
+
+    /* Breathing underline — only on when session is running */
+    .timer-line {
+      height: 1px;
+      width: 0;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      margin: 8px auto 0;
+      opacity: 0;
+      transition: width 0.55s ease, opacity 0.4s;
+    }
+
+    .timer-line.on {
+      width: 52%;
+      opacity: 1;
+      animation: breathe 2.4s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { opacity: 0.3; }
+      50%       { opacity: 1; }
+    }
+
+    /* "Started at 9:15 AM" — contextual session info */
+    .timer-meta {
+      font-size: 0.67rem;
+      font-weight: 400;
+      color: var(--text-sub);
+      letter-spacing: 0.04em;
+      text-align: center;
+      height: 16px;
+      margin: 12px 0 18px;
+    }
+
+    /* ── Buttons — bigger for easier interaction ────────────── */
+    .btn-row { display: flex; gap: 10px; }
+
+    .btn {
+      font-family: var(--font);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 13px 30px;
+      border-radius: 2px;
+      border: 1px solid;
+      cursor: pointer;
+      background: transparent;
+      transition: background 0.16s, border-color 0.16s, color 0.16s, transform 0.1s;
+      white-space: nowrap;
+      min-width: 90px;
+    }
+
+    .btn:active  { transform: scale(0.95); }
+    .btn:disabled { opacity: 0.16; cursor: not-allowed; pointer-events: none; }
+
+    .btn-start { border-color: var(--gold); color: var(--gold-bright); }
+    .btn-start:hover { background: rgba(196,162,70,0.09); }
+
+    .btn-pause { border-color: rgba(120,112,88,0.3); color: var(--text-sub); }
+    .btn-pause:hover { border-color: var(--gold-dim); color: var(--text); background: rgba(120,112,88,0.06); }
+
+    .btn-stop  { border-color: rgba(184,82,72,0.28); color: rgba(184,82,72,0.6); }
+    .btn-stop:hover  { border-color: var(--red); color: var(--red); background: rgba(184,82,72,0.06); }
+
+    /* ── Session end card — the reward moment ────────────────── */
+    .sess-card {
+      margin-top: 20px;
+      padding: 20px 28px 22px;
+      border: 1px solid rgba(196,162,70,0.22);
+      background: linear-gradient(135deg, rgba(196,162,70,0.04) 0%, rgba(196,162,70,0.01) 50%, rgba(196,162,70,0.06) 100%);
+      border-radius: 4px;
+      text-align: center;
+      width: 100%;
+      max-width: 440px;
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      pointer-events: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Gold shimmer line at top of card */
+    .sess-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.7), transparent);
+    }
+
+    /* Subtle glow at bottom */
+    .sess-card::after {
+      content: '';
+      position: absolute;
+      bottom: -20px; left: 50%;
+      transform: translateX(-50%);
+      width: 200px; height: 60px;
+      background: radial-gradient(ellipse, rgba(196,162,70,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .sess-card.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .sc-lbl {
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      margin-bottom: 14px;
+    }
+
+    /* Motivational phrase shown above duration */
+    .sc-kudos {
+      font-size: 0.78rem;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--text-sub);
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .sc-dur {
+      font-family: var(--mono);
+      font-size: 2.6rem;
+      font-weight: 300;
+      color: var(--gold-bright);
+      line-height: 1;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+
+    .sc-dur-label {
+      font-size: 0.48rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    .sc-body {
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--text-dim);
+      line-height: 1.6;
+      padding-top: 12px;
+      border-top: 1px solid rgba(196,162,70,0.08);
+    }
+
+    /* ── RIGHT PANEL ─────────────────────────────────────────── */
+    .right {
+      display: flex;
+      flex-direction: column;
+      padding: 15px 20px 12px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .panel-lbl {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      margin-bottom: 10px;
+    }
+
+    /* ── Stats: one row per stat, full width ────────────────────
+       Changed from 3-column grid to single column.
+       Each card is now a horizontal row: label on left, value on right.
+       Reason: easier to scan, no cramped 3-column layout, matches
+       natural reading direction (label → value).
+    */
+    .stats {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .scard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 8px 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 0.2s;
+    }
+
+    .scard:hover { border-color: var(--border-hi); }
+
+    .sl {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+    }
+
+    .sv {
+      font-family: var(--mono);
+      font-size: 1.03rem;
+      font-weight: 500;
+      color: var(--gold-bright);
+      font-variant-numeric: tabular-nums;
+    }
+    /* Status badge — DEAD CSS removed (element no longer exists) */
+
+    /* Today's sessions list */
+    .log-sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.25), transparent);
+      margin: 9px 0 9px;
+    }
+
+    .log-hdr {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-bottom: 5px;
+    }
+
+    .log-list {
+      max-height: 136px; /* exactly 4 rows × ~34px — no excess space */
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(196,162,70,0.12) transparent;
+    }
+
+    .log-list::-webkit-scrollbar { width: 3px; }
+    .log-list::-webkit-scrollbar-track { background: transparent; }
+    .log-list::-webkit-scrollbar-thumb { background: rgba(196,162,70,0.14); border-radius: 2px; }
+
+    .log-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(196,162,70,0.05);
+    }
+
+    .log-row:last-child { border-bottom: none; }
+
+    .log-time {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-sub);
+    }
+
+    .log-dur {
+      font-family: var(--mono);
+      font-size: 0.73rem;
+      font-weight: 500;
+      color: var(--gold);
+    }
+
+    .log-empty {
+      font-size: 0.78rem;
+      font-weight: 300;
+      font-style: italic;
+      color: var(--text-dim);
+      text-align: center;
+      padding: 18px 0;
+      line-height: 1.6;
+    }
+    /* ── "RIGHT NOW" schedule block ─────────────────────────────
+       Live indicator of current schedule block. Updates every 30s.
+       Study blocks glow gold; seva/break blocks are dim.
+       Most useful feature for staying on the daily schedule.
+    */
+    .now-sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.25), transparent);
+      margin: 9px 0 9px;
+    }
+    .now-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 9px 13px 8px;
+      margin-bottom: 8px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.4s;
+    }
+    .now-wrap.study-block {
+      border-color: rgba(196,162,70,0.28);
+      background: linear-gradient(135deg, rgba(196,162,70,0.04), var(--surface));
+    }
+    /* Gold top shimmer on study blocks */
+    .now-wrap.study-block::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.45), transparent);
+    }
+    .now-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .now-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .now-block-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      line-height: 1.3;
+      margin-bottom: 5px;
+    }
+    .now-wrap.study-block .now-block-name {
+      color: var(--gold);
+    }
+    .now-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .now-time-left {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+    }
+    .now-wrap.study-block .now-time-left { color: var(--gold-dim); }
+    .now-next {
+      font-size: 0.5rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      opacity: 0.7;
+    }
+    .now-progress {
+      height: 2px;
+      background: rgba(196,162,70,0.07);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .now-progress-fill {
+      height: 100%;
+      background: rgba(196,162,70,0.25);
+      border-radius: 1px;
+      transition: width 1s linear;
+    }
+    .now-wrap.study-block .now-progress-fill {
+      background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    }
+
+    /* ── 7-Day Heatmap ───────────────────────────────────────────
+       Mon–Sun boxes for current week.
+       Fill = % of daily goal achieved. Turns gold at 100%.
+       Shows consistency at a glance — the most honest mirror.
+    */
+    .heat-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .heat-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .heat-week-total {
+      font-family: var(--mono);
+      font-size: 0.55rem;
+      color: var(--gold-dim);
+    }
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 3px;
+    }
+    .heat-day {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .heat-box {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 2px;
+      background: rgba(196,162,70,0.05);
+      border: 1px solid rgba(196,162,70,0.07);
+      position: relative;
+      overflow: hidden;
+      transition: background 0.4s, border-color 0.4s;
+    }
+    /* Today indicator — ring */
+    .heat-box.today {
+      border-color: rgba(196,162,70,0.35);
+    }
+    .heat-fill {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(180deg, rgba(196,162,70,0.5), rgba(196,162,70,0.2));
+      transition: height 0.6s ease;
+    }
+    .heat-fill.full {
+      background: linear-gradient(180deg, var(--gold), var(--gold-dim));
+    }
+    .heat-day-lbl {
+      font-size: 0.44rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .heat-day-lbl.today { color: var(--gold-dim); }
+
+    /* ── Daily goal progress bar ─────────────────────────────────
+       Shows progress toward 11-hour daily goal.
+       Thin bar with fill + percentage — instant visual feedback.
+    */
+    .goal-wrap {
+      margin-bottom: 10px;
+    }
+    .goal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .goal-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .goal-pct {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      font-weight: 600;
+      color: var(--gold-dim);
+      font-variant-numeric: tabular-nums;
+    }
+    .goal-bar {
+      height: 3px;
+      background: rgba(196,162,70,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .goal-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold-dim), var(--gold-bright));
+      border-radius: 2px;
+      transition: width 1s ease;
+      width: 0%;
+    }
+    .goal-fill.done {
+      background: linear-gradient(90deg, #4e9460, #60c478);
+    }
+
+    /* ── Keyboard shortcut hint ──────────────────────────────────
+       Shown below buttons. Reminds user of shortcuts after 1st use.
+       Very subtle — just for discoverability.
+    */
+    .kb-hint {
+      margin-top: 10px;
+      font-size: 0.52rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      text-align: center;
+      opacity: 0.7;
+    }
+    .kb-hint kbd {
+      font-family: var(--mono);
+      font-size: 0.5rem;
+      background: rgba(196,162,70,0.07);
+      border: 1px solid rgba(196,162,70,0.12);
+      border-radius: 2px;
+      padding: 1px 4px;
+      color: var(--text-sub);
+    }
+
+    /* ── Break reminder toast ────────────────────────────────────
+       Appears after 90 min of unbroken study. Gentle nudge.
+       Auto-dismisses after 10 seconds. Non-intrusive.
+    */
+    .break-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: linear-gradient(135deg, var(--surface), rgba(196,162,70,0.06));
+      border: 1px solid rgba(196,162,70,0.2);
+      border-radius: 4px;
+      padding: 12px 20px;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      z-index: 100;
+      min-width: 320px;
+      max-width: 440px;
+    }
+    .break-toast::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.5), transparent);
+    }
+    .break-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+    .bt-icon {
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+    }
+    .bt-title {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+    .bt-msg {
+      font-size: 0.74rem;
+      font-weight: 300;
+      font-style: italic;
+      color: var(--text-sub);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .bt-dismiss {
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: var(--font);
+      padding: 0;
+    }
+    .bt-dismiss:hover { color: var(--text-sub); }
+    /* ── Data Export Panel ───────────────────────────────────────
+       Slide-up panel from the bottom of the right panel.
+       Three options: CSV (spreadsheet), JSON (backup), Clear data.
+    */
+    .export-btn {
+      font-family: var(--font);
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      background: none;
+      border: 1px solid rgba(196,162,70,0.12);
+      border-radius: 2px;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .export-btn:hover { color: var(--gold); border-color: rgba(196,162,70,0.3); }
+
+    .export-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6,6,13,0.82);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      backdrop-filter: blur(4px);
+    }
+    .export-modal.open { opacity: 1; pointer-events: auto; }
+
+    .export-box {
+      background: #0e0e1c;
+      border: 1px solid rgba(196,162,70,0.2);
+      border-radius: 5px;
+      padding: 28px 32px;
+      min-width: 340px;
+      max-width: 420px;
+      position: relative;
+      transform: translateY(12px);
+      transition: transform 0.3s;
+    }
+    .export-modal.open .export-box { transform: translateY(0); }
+
+    .export-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.5), transparent);
+    }
+
+    .exp-title {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      margin-bottom: 6px;
+    }
+    .exp-sub {
+      font-size: 0.72rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      margin-bottom: 22px;
+      line-height: 1.5;
+    }
+    .exp-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .exp-option {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      text-align: left;
+      font-family: var(--font);
+      width: 100%;
+    }
+    .exp-option:hover { border-color: rgba(196,162,70,0.3); background: rgba(196,162,70,0.04); }
+    .exp-option-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .exp-option-desc {
+      font-size: 0.62rem;
+      font-weight: 400;
+      color: var(--text-sub);
+      line-height: 1.4;
+    }
+    .exp-option.danger { border-color: rgba(184,82,72,0.18); }
+    .exp-option.danger:hover { border-color: rgba(184,82,72,0.45); background: rgba(184,82,72,0.04); }
+    .exp-option.danger .exp-option-title { color: rgba(184,82,72,0.75); }
+
+    .exp-close {
+      font-family: var(--font);
+      font-size: 0.52rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      width: 100%;
+      text-align: center;
+    }
+    .exp-close:hover { color: var(--text-sub); }
+
+    .exp-stats {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      margin-bottom: 18px;
+      font-family: var(--mono);
+    }
+
+    /* ── Daily Status Card — left panel centrepiece ──────────────
+       This is the honest mirror: are you a ranker or a dusht today?
+       Placed below the controls so every glance at the timer ends here.
+    */
+    .status-card {
+      margin-top: 22px;
+      width: 100%;
+      max-width: 460px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.5s ease, background 0.5s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 28px 18px;
+      gap: 0;
+    }
+
+    /* Thin accent line at top — colour driven by JS class */
+    .status-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--sc-accent, rgba(196,162,70,0.12));
+      transition: background 0.5s ease;
+    }
+
+    /* Subtle radial glow behind the text */
+    .status-card::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px; height: 80px;
+      background: radial-gradient(ellipse, var(--sc-glow, transparent) 0%, transparent 70%);
+      pointer-events: none;
+      transition: background 0.5s ease;
+    }
+
+    .status-card.sc-bad {
+      border-color: rgba(184,82,72,0.25);
+      background: linear-gradient(160deg, rgba(184,82,72,0.04), var(--surface));
+      --sc-accent: linear-gradient(90deg, transparent, rgba(184,82,72,0.55), transparent);
+      --sc-glow:   rgba(184,82,72,0.06);
+    }
+    .status-card.sc-ok {
+      border-color: rgba(78,148,96,0.25);
+      background: linear-gradient(160deg, rgba(78,148,96,0.04), var(--surface));
+      --sc-accent: linear-gradient(90deg, transparent, rgba(78,148,96,0.55), transparent);
+      --sc-glow:   rgba(78,148,96,0.06);
+    }
+    .status-card.sc-good {
+      border-color: rgba(196,162,70,0.28);
+      background: linear-gradient(160deg, rgba(196,162,70,0.04), var(--surface));
+      --sc-accent: linear-gradient(90deg, transparent, rgba(196,162,70,0.55), transparent);
+      --sc-glow:   rgba(196,162,70,0.07);
+    }
+    .status-card.sc-great {
+      border-color: rgba(196,162,70,0.48);
+      background: linear-gradient(160deg, rgba(196,162,70,0.07), var(--surface));
+      --sc-accent: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
+      --sc-glow:   rgba(196,162,70,0.12);
+    }
+
+    .sc-tag {
+      font-size: 0.46rem;
+      font-weight: 700;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 9px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .sc-status-text {
+      font-family: var(--mono);
+      font-size: 1.55rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1;
+      transition: color 0.5s ease;
+      position: relative;
+      z-index: 1;
+      color: var(--text-dim);
+    }
+
+    .status-card.sc-bad   .sc-status-text { color: #b85248; }
+    .status-card.sc-ok    .sc-status-text { color: var(--green); }
+    .status-card.sc-good  .sc-status-text { color: var(--gold); }
+    .status-card.sc-great .sc-status-text { color: var(--gold-bright); }
+
+    .sc-hours-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .sc-hours-bar-wrap {
+      width: 120px;
+      height: 2px;
+      background: rgba(196,162,70,0.07);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .sc-hours-bar-fill {
+      height: 100%;
+      border-radius: 1px;
+      transition: width 1s ease, background 0.5s ease;
+      width: 0%;
+      background: rgba(196,162,70,0.3);
+    }
+
+    .status-card.sc-bad   .sc-hours-bar-fill { background: rgba(184,82,72,0.5); }
+    .status-card.sc-ok    .sc-hours-bar-fill { background: rgba(78,148,96,0.6); }
+    .status-card.sc-good  .sc-hours-bar-fill { background: var(--gold-dim); }
+    .status-card.sc-great .sc-hours-bar-fill { background: linear-gradient(90deg, var(--gold-dim), var(--gold-bright)); }
+
+    .sc-hours-label {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      transition: color 0.5s;
+    }
+
+    .status-card.sc-bad   .sc-hours-label { color: rgba(184,82,72,0.6); }
+    .status-card.sc-ok    .sc-hours-label { color: rgba(78,148,96,0.7); }
+    .status-card.sc-good  .sc-hours-label { color: var(--gold-dim); }
+    .status-card.sc-great .sc-hours-label { color: var(--gold); }
+  </style>
+</head>
+<body>
+<canvas id="star-canvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
+<div class="app">
+
+  <!-- ── HEADER: brand + CS&DA tag only ────────────────────── -->
+  <header class="header">
+    <span class="brand">Shriyash &middot; GATE 2027</span>
+    <span class="header-tag">CS &amp; DA</span>
+  </header>
+
+  <!-- ── COUNTDOWN STRIP: full-width, prominent ────────────── -->
+  <!--
+    Moved out of the header into its own dedicated row.
+    Bigger numbers = immediate awareness of urgency.
+    Reason: when you're studying for 10+ hours, glancing up should
+    immediately show you how much runway is left.
+  -->
+  <div class="cd-strip">
+    <span class="cd-label">Time to GATE</span>
+    <div class="cd-units">
+      <div class="cd-unit">
+        <span class="cd-num" id="cd-d">---</span>
+        <span class="cd-lbl">Days</span>
+      </div>
+      <span class="cd-sep">:</span>
+      <div class="cd-unit">
+        <span class="cd-num" id="cd-h">--</span>
+        <span class="cd-lbl">Hours</span>
+      </div>
+      <span class="cd-sep">:</span>
+      <div class="cd-unit">
+        <span class="cd-num" id="cd-m">--</span>
+        <span class="cd-lbl">Min</span>
+      </div>
+      <span class="cd-sep">:</span>
+      <div class="cd-unit">
+        <span class="cd-num" id="cd-s">--</span>
+        <span class="cd-lbl">Sec</span>
+      </div>
+    </div>
+    <div class="cd-gate-label">
+      <span class="cd-gate-title">GATE 2027</span>
+      <span class="cd-gate-date">1 Feb 2027</span>
+    </div>
+  </div>
+
+  <!-- ── MAIN: timer (left) · divider · study log (right) ─── -->
+  <div class="main">
+
+    <!-- Left: Quote + Timer + Controls -->
+    <div class="left">
+
+      <div class="quote-wrap">
+        <p class="qt" id="qt"></p>
+        <span class="qs" id="qs"></span>
+      </div>
+
+      <div class="rule"></div>
+
+      <div class="timer-block">
+        <div class="timer-num" id="timer">00:00:00</div>
+        <div class="timer-line" id="tline"></div>
+      </div>
+
+      <div class="timer-meta" id="tmeta">&nbsp;</div>
+
+      <div class="btn-row">
+        <button class="btn btn-start" id="b-start" onclick="timerStart()" title="Start a new study session">Start</button>
+        <button class="btn btn-pause" id="b-pause" onclick="timerPause()" disabled title="Pause or resume the current session">Pause</button>
+        <button class="btn btn-stop"  id="b-stop"  onclick="timerStop()"  disabled title="End session and save to log">Stop</button>
+      </div>
+
+      <div class="kb-hint">
+        <kbd>Space</kbd> &nbsp;Start / Pause &nbsp;&nbsp; <kbd>Esc</kbd> &nbsp;Stop
+      </div>
+
+      <!-- Daily Status — main accountability anchor -->
+      <div class="status-card sc-bad" id="status-card">
+        <div class="sc-tag">Daily Status</div>
+        <div class="sc-status-text" id="sc-status-text">Dusht &amp; Paapi</div>
+        <div class="sc-hours-row">
+          <div class="sc-hours-bar-wrap">
+            <div class="sc-hours-bar-fill" id="sc-bar-fill"></div>
+          </div>
+          <span class="sc-hours-label" id="sc-hours-label">0h 0m studied</span>
+        </div>
+      </div>
+
+      <div class="sess-card" id="scard">
+        <div class="sc-lbl">Session Complete &nbsp;·&nbsp; Jai Shri Radhe</div>
+        <div class="sc-kudos" id="sc-kudos"></div>
+        <div class="sc-dur"  id="sc-dur"></div>
+        <div class="sc-dur-label">studied this session</div>
+        <div class="sc-body" id="sc-body"></div>
+      </div>
+
+    </div>
+
+    <div class="v-div"></div>
+
+    <!-- Right: Study Log -->
+    <div class="right">
+
+      <!-- "RIGHT NOW" — live schedule block indicator (top) -->
+      <div class="log-hdr" style="margin-bottom:6px">Right Now</div>
+      <div class="now-wrap" id="now-wrap">
+        <div class="now-top">
+          <span class="now-label" id="now-label">Loading…</span>
+        </div>
+        <div class="now-block-name" id="now-block-name">—</div>
+        <div class="now-bottom">
+          <span class="now-time-left" id="now-time-left">—</span>
+          <span class="now-next" id="now-next"></span>
+        </div>
+        <div class="now-progress"><div class="now-progress-fill" id="now-progress-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="now-sep"></div>
+
+      <!-- Study Log -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="panel-lbl" style="margin-bottom:0">Study Log</div>
+        <button class="export-btn" onclick="openExport()" title="Export or backup your study data">⬇ Export</button>
+      </div>
+
+      <!-- Daily goal progress bar — 11h target, instant visual motivation -->
+      <div class="goal-wrap">
+        <div class="goal-header">
+          <span class="goal-label">Daily Goal &nbsp;·&nbsp; 10h 40m</span>
+          <span class="goal-pct" id="goal-pct">0%</span>
+        </div>
+        <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
+      </div>
+      <div class="stats">
+        <div class="scard"><span class="sl">Today</span><span class="sv" id="s-today">0h 0m</span></div>
+        <div class="scard"><span class="sl">This Week</span><span class="sv" id="s-week">0h 0m</span></div>
+        <div class="scard"><span class="sl">This Month</span><span class="sv" id="s-month">0h 0m</span></div>
+        <div class="scard"><span class="sl">Daily Avg (all time)</span><span class="sv" id="s-avg">0h 0m</span></div>
+        <div class="scard"><span class="sl">Streak</span><span class="sv" id="s-streak">0 days</span></div>
+        <div class="scard"><span class="sl">All-Time</span><span class="sv" id="s-alltime">0h 0m</span></div>
+      </div>
+      <div class="heat-hdr">
+        <span class="heat-label">This Week</span>
+        <span class="heat-week-total" id="heat-week-total"></span>
+      </div>
+      <div class="heatmap" id="heatmap"></div>
+
+      <div class="log-sep"></div>
+
+      <!-- Today's Sessions (bottom) -->
+      <div class="log-hdr">Today&rsquo;s Sessions</div>
+      <div class="log-list" id="log-list">
+        <div class="log-empty">No sessions yet.<br>Begin your sadhana.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="export-modal" id="export-modal" role="dialog" aria-modal="true" aria-labelledby="exp-modal-title">
+  <div class="export-box">
+    <div class="exp-title" id="exp-modal-title">Export Study Data</div>
+    <div class="exp-sub" id="exp-sub">Loading…</div>
+    <div class="exp-stats" id="exp-stats"></div>
+    <div class="exp-row">
+      <button class="exp-option" onclick="exportCSV()">
+        <div class="exp-option-title">📊 Download as CSV</div>
+        <div class="exp-option-desc">Opens in Excel, Google Sheets. One row per session with date, start time, end time, and duration. Best for analysis.</div>
+      </button>
+      <button class="exp-option" onclick="exportJSON()">
+        <div class="exp-option-title">💾 Download as JSON</div>
+        <div class="exp-option-desc">Full data backup. Can be restored later. Keep this safe — it's your complete study history.</div>
+      </button>
+      <button class="exp-option" onclick="copyText()">
+        <div class="exp-option-title" id="copy-btn-title">📋 Copy Summary Text</div>
+        <div class="exp-option-desc">Copies a clean plain-text summary — total time, streak, daily average — to your clipboard.</div>
+      </button>
+      <button class="exp-option danger" onclick="confirmClear()">
+        <div class="exp-option-title">🗑 Clear All Data</div>
+        <div class="exp-option-desc">Permanently deletes all session history. Download a backup first. Cannot be undone.</div>
+      </button>
+    </div>
+    <button class="exp-close" onclick="closeExport()">Close</button>
+  </div>
+</div>
+
+<!-- Break reminder toast — fires after 90 min of continuous study -->
+<div class="break-toast" id="break-toast" role="alert" aria-live="polite">
+  <div class="bt-icon">🌸</div>
+  <div class="bt-title">90 Minutes — Take a Short Break</div>
+  <div class="bt-msg">"Tu roz aaja mere paas — main roz nayi shakti dungi."<br><span style="font-size:0.62rem;color:var(--gold-dim);font-style:normal;letter-spacing:0.1em">— Radha Rani</span></div>
+  <button class="bt-dismiss" onclick="dismissBreak()">Dismiss &nbsp;·&nbsp; Continue Studying</button>
+</div>
+
+<script>
+/* ─── CONSTANTS ───────────────────────────────────────────────── */
+/*
+  GATE 2027 date is set to Feb 1 in IST (UTC+5:30).
+  Using a fixed ISO offset ensures correctness even if the browser
+  locale changes — important for a GitHub Pages deployment.
+*/
+const GATE_DATE    = new Date('2027-02-01T00:00:00+05:30');
+const KEY_TIMER    = 'gate_timer_v3';
+const KEY_SESSIONS = 'gate_sessions_v1';
+
+/* ─── QUOTES ──────────────────────────────────────────────────── */
+const QUOTES = [
+  {t:"Sukh ho ya dukh, ek hi vichaar — Ladli Ju ki kripa hai.",s:"Gurudev"},
+  {t:"Shan shan mein kripa hi kripa hai.",s:"Gurudev"},
+  {t:"Yugal Sarkar ki bahut kripa hai — bas yahi yaad rakho.",s:"Gurudev"},
+  {t:"Bhajan Shri Ji ke liye, Shri Ji ke dwara hi hoga.",s:"Gurudev"},
+  {t:"Sadhan bhi priyalal, sadhya bhi priyalal.",s:"Gurudev"},
+  {t:"Sharanagati matlab — saari bhar unki, teri koi nahi.",s:"Gurudev"},
+  {t:"Nirantar naam japa — Radha Radha... yahi tera kaam hai.",s:"Gurudev"},
+  {t:"Chinta karna matlab Radha Rani par vishwas nahi karna.",s:"Gurudev"},
+  {t:"Tera man, tera sharir — sab kuch unka ho gaya hai.",s:"Gurudev"},
+  {t:"Ab tu unka ho gaya hai, toh saari bhar unki hai.",s:"Gurudev"},
+  {t:"Vikaar aaye toh rona mat — sirf bolna, Naath app dekhlo.",s:"Gurudev"},
+  {t:"Bemani mat karna — unki sharanagati mein manmani nahi chalti.",s:"Gurudev"},
+  {t:"Tere bhaav, aacharan, vritti — inki chinta unhe hai, tujhe nahi.",s:"Gurudev"},
+  {t:"Unki nirmal yash ka kalank mat ban jaana.",s:"Gurudev"},
+  {t:"Vishwas kar, chinta mat kar — bas itna kaafi hai.",s:"Gurudev"},
+  {t:"Hey Naath, aaj se saara bhaar apka — ab chinta khatam.",s:"Gurudev"},
+  {t:"Ro do bhai, par bolna — Naath app dekhlo, nischint raho.",s:"Gurudev"},
+  {t:"Dosho ki chinta nahi — unke saamne aao, woh dekh lenge.",s:"Gurudev"},
+  {t:"Mera sharan hokar chinta karta hai? Bilkul nahi karna.",s:"Gurudev"},
+  {t:"Gurudev ne sharanagati di hai — ab teri zimmedaari unki hai.",s:"Gurudev"},
+  {t:"Tera bhaar mujhe de de — tu khali ho ja.",s:"Radha Rani"},
+  {t:"Mera naam le — bas itna hi tera kaam hai.",s:"Radha Rani"},
+  {t:"Tu kuch nahi kar sakta, main sab kar sakti hoon.",s:"Radha Rani"},
+  {t:"Tera jeevan mera hai — main hi chalaaungi.",s:"Radha Rani"},
+  {t:"Teri samarthya nahi hai, meri hai — is fark ko samajh le.",s:"Radha Rani"},
+  {t:"Tu mera hai — toh teri chinta bhi meri hai.",s:"Radha Rani"},
+  {t:"Tujhe meri yaad chahiye, mujhe teri — yahi rishta hai.",s:"Radha Rani"},
+  {t:"Har pal meri kripa hai — tu dekh nahi raha, main hoon yahan.",s:"Radha Rani"},
+  {t:"Bhajan bhi main karaaungi, tu bas aane de mujhe.",s:"Radha Rani"},
+  {t:"Tere dosh tere nahi — la, mujhe de de.",s:"Radha Rani"},
+  {t:"Tu ghabra mat — jo nahi kar sakta, woh main karti hoon.",s:"Radha Rani"},
+  {t:"Ek second bhi meri kripa ke bina nahi guzra tere liye.",s:"Radha Rani"},
+  {t:"Teri mehnat bhi meri, tera result bhi mera.",s:"Radha Rani"},
+  {t:"Naam le mera — baki main sambhal lungi.",s:"Radha Rani"},
+  {t:"Tu shunya hai, main poorna hoon — mil ja mujhse.",s:"Radha Rani"},
+  {t:"Tera dil dukhta hai? La, mujhe dikha — main dekhti hoon.",s:"Radha Rani"},
+  {t:"Tujhe toppers list mein main le jaaungi — tu vishwas rakh.",s:"Radha Rani"},
+  {t:"Teri neend, teri padhai, tera waqt — sab mera hai.",s:"Radha Rani"},
+  {t:"Jo teri samajh se bahar hai, woh meri pakad mein hai.",s:"Radha Rani"},
+  {t:"Tu roz aaja mere paas — main roz nayi shakti dungi.",s:"Radha Rani"},
+  {t:"Teri koshish meri hai — main ise vyarth nahi jaane dungi.",s:"Radha Rani"},
+  {t:"Har quiz, har session — main hoon tere saath.",s:"Radha Rani"},
+  {t:"Tera guru bhi mera, teri padhai bhi meri — chhod de mujhe sab.",s:"Radha Rani"},
+  {t:"Tujhe sirf yaad rakhna hai mujhe — baki sab mera kaam hai.",s:"Radha Rani"},
+  {t:"Dard mein bhi meri kripa hai — aankhein khol ke dekh.",s:"Radha Rani"},
+  {t:"Tu akela nahi hai — main hoon, hamesha hoon.",s:"Radha Rani"},
+  {t:"Teri kamzori meri taaqat mein sama jaati hai.",s:"Radha Rani"},
+  {t:"Agar tu shunya bane, main poora bhar dungi.",s:"Radha Rani"},
+  {t:"Naam jap mera — yahi tera sabse bada kaam hai.",s:"Radha Rani"},
+  {t:"Teri aansu bhi mujhe pyaare hain — ro le, main hoon.",s:"Radha Rani"},
+  {t:"Tu strategy mat bana — main raah dikhaaungi.",s:"Radha Rani"},
+  {t:"Mujhme samarthya nahi — Shri Ji hi kuch kar sakti hain.",s:"Shriyash"},
+  {t:"Ye jeevan mera nahi — Radha Rani ka hai.",s:"Shriyash"},
+  {t:"Ek second aur guzra — abhi bhi unki hi kripa thi.",s:"Shriyash"},
+  {t:"Mujhe bas unki yaad chahiye, aur kuch nahi.",s:"Shriyash"},
+  {t:"Mein apne se kuch nahi kar sakta — ye sach hai.",s:"Shriyash"},
+  {t:"Apki kripa se jeevan chalega — meri taaqat se nahi.",s:"Shriyash"},
+  {t:"App hi mere sab kuch hain — is baat ko bhoolna nahi.",s:"Shriyash"},
+  {t:"Jo main nahi kar sakta, Shri Ji kar sakti hain.",s:"Shriyash"},
+  {t:"Mera dosh hai — par unhe de diya, ab chinta nahi.",s:"Shriyash"},
+  {t:"Sir ka sapna poora karna mere bas mein nahi — Shri Ji ke bas mein hai.",s:"Shriyash"},
+  {t:"Mein zero hoon — Shri Ji number one hain.",s:"Shriyash"},
+  {t:"Unhe galat mat kehne dena — yahi meri ek zimmedaari hai.",s:"Shriyash"},
+  {t:"Har dukh mein ek hi baat — Ladli Ju ki badi kripa hai.",s:"Shriyash"},
+  {t:"Mera man unka, mera sharir unka, mein unka.",s:"Shriyash"},
+  {t:"Chinta karna matlab unpar shak karna — nahi karna.",s:"Shriyash"},
+  {t:"Vikaar aaya — seedha unke paas chala jaata hoon.",s:"Shriyash"},
+  {t:"Naath app dekhlo — itna bolna kaafi hai, rona bhi theek hai.",s:"Shriyash"},
+  {t:"Shan shan mein kripa hai — mujhe sirf dekhna hai.",s:"Shriyash"},
+  {t:"Unki sharanagati mein hoon — toh bhar unhi ki hai.",s:"Shriyash"},
+  {t:"Mera waqt unka hai — main ispe haq nahi jata.",s:"Shriyash"},
+  {t:"Padhai bhi unki, rank bhi unka — mein bas nimit hoon.",s:"Shriyash"},
+  {t:"Unpar bharosa hai — toh mehnat mein darna kaisa.",s:"Shriyash"},
+  {t:"Sadhan bhi unka, sadhya bhi unka — main beech mein kaun?",s:"Shriyash"},
+  {t:"Ek naam — Radha — itna hi kaafi hai mere liye.",s:"Shriyash"},
+  {t:"Jo main nahi sambhal sakta, woh unka kaam hai.",s:"Shriyash"},
+  {t:"Unka kehlakar bhi aisa karta hoon — Naath app hi dekhlo.",s:"Shriyash"},
+  {t:"Mein weak hoon — isliye Shri Ji mere liye perfect hain.",s:"Shriyash"},
+  {t:"Weekly quiz unka hai — main sirf upasthit hota hoon.",s:"Shriyash"},
+  {t:"Roz unka naam lena — yahi meri sabse badi koshish hai.",s:"Shriyash"},
+  {t:"Agar main toppers list mein hoon — toh woh Shri Ji hain, main nahi.",s:"Shriyash"},
+  {t:"Plan banana meri aadat hai — chhodna Shri Ji ka kaam hai.",s:"Shriyash"},
+  {t:"Unki nirmal yash — iska dhyaan rakhna meri pehli duty hai.",s:"Shriyash"},
+  {t:"Jo nahi hota mujhse — woh Shri Ji se hota hai.",s:"Shriyash"},
+  {t:"Khud par nahi, unpar nazar rakhna — yahi sahi hai.",s:"Shriyash"},
+  {t:"Hard-work meri taaqat nahi — Shri Ji ki den hai.",s:"Shriyash"},
+  {t:"Gurudev ne raah dikhaai, Shri Ji raah hain — main sirf chalun.",s:"Shriyash"},
+  {t:"Mein kuch bhi nahi — Shri Ji sab kuch hain.",s:"Shriyash"},
+  {t:"Unpe chhodna weakness nahi — sabse badi samajhdaari hai.",s:"Shriyash"},
+  {t:"Roj ek kadam — Shri Ji baaki sambhalti hain.",s:"Shriyash"},
+  {t:"Mera best bhi unki kripa hai — apna nahi keh sakta.",s:"Shriyash"},
+  {t:"Unka naam lena — yahi meri consistency hai.",s:"Shriyash"},
+  {t:"Agar main kuch bhi achieve karun — Shri Ji ne kiya, main nahi.",s:"Shriyash"},
+  {t:"Ghabrana nahi — Shri Ji hain na.",s:"Shriyash"},
+  {t:"Unke bina ek pal bhi theek se nahi guzarta.",s:"Shriyash"},
+  {t:"Meri sab zimmedaariyan — unke haath mein de di hain.",s:"Shriyash"},
+  {t:"Jo mujhe pata nahi — unhe pata hai, bas.",s:"Shriyash"},
+  {t:"Roz unhe bolna — app dekhlo, main hoon hi nahi yahan.",s:"Shriyash"},
+  {t:"Meri taraf se kuch nahi — unki taraf se sab kuch.",s:"Shriyash"},
+  {t:"Unka naam meri sabse badi tayyaari hai.",s:"Shriyash"},
+  {t:"Apni kamzori dekhta hoon toh — unki zaroorat aur zyada lagti hai.",s:"Shriyash"},
+];
+
+function shuffle(a){
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [b[i],b[j]]=[b[j],b[i]];
+  }
+  return b;
+}
+
+let pool=shuffle(QUOTES), qi=0;
+
+function nextQuote(){
+  const qt=document.getElementById('qt'), qs=document.getElementById('qs');
+  qt.classList.remove('show'); qs.classList.remove('show');
+  setTimeout(()=>{
+    if(qi>=pool.length){pool=shuffle(QUOTES);qi=0;}
+    const q=pool[qi++];
+    qt.textContent='\u201C'+q.t+'\u201D';
+    qs.textContent=q.s;
+    qt.classList.add('show'); qs.classList.add('show');
+  },500);
+}
+nextQuote();
+setInterval(nextQuote,30000);
+
+/* ─── COUNTDOWN ───────────────────────────────────────────────── */
+let _cdIv=null;
+function tickCD(){
+  const diff=GATE_DATE-Date.now();
+  if(diff<=0){
+    document.querySelector('.cd-units').innerHTML=
+      '<span style="font-family:var(--mono);font-size:1.4rem;color:var(--gold-bright);letter-spacing:0.06em">Jai Shri Radhe — GATE Day!</span>';
+    if(_cdIv){clearInterval(_cdIv);_cdIv=null;}
+    return;
+  }
+  const d=Math.floor(diff/86400000),
+        h=Math.floor((diff%86400000)/3600000),
+        m=Math.floor((diff%3600000)/60000),
+        s=Math.floor((diff%60000)/1000);
+  document.getElementById('cd-d').textContent=d;
+  document.getElementById('cd-h').textContent=pad(h);
+  document.getElementById('cd-m').textContent=pad(m);
+  document.getElementById('cd-s').textContent=pad(s);
+}
+tickCD(); _cdIv=setInterval(tickCD,1000);
+
+/* ─── HELPERS ─────────────────────────────────────────────────── */
+function pad(n){return String(n).padStart(2,'0');}
+
+/* "YYYY-MM-DD" from a ms timestamp (defaults to now) */
+function dk(ms){
+  const d=new Date(ms??Date.now());
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+/* Is a ms timestamp in the current Mon–Sun week? */
+function inWeek(ms){
+  const now=new Date(), dow=(now.getDay()+6)%7;
+  const mon=new Date(now); mon.setDate(now.getDate()-dow); mon.setHours(0,0,0,0);
+  const nextMon=new Date(mon); nextMon.setDate(mon.getDate()+7);
+  const d=new Date(ms);
+  return d>=mon&&d<nextMon;
+}
+
+/* Is a ms timestamp in the current calendar month? */
+function inMonth(ms){
+  const n=new Date(),d=new Date(ms);
+  return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();
+}
+
+/* Format ms → "HH:MM:SS" */
+function fmtDur(ms){
+  const s=Math.floor(Math.max(0,ms)/1000);
+  return pad(Math.floor(s/3600))+':'+pad(Math.floor((s%3600)/60))+':'+pad(s%60);
+}
+
+/* Format timestamp → "9:15 AM" */
+function fmtT(ms){
+  const d=new Date(ms); let h=d.getHours(),m=d.getMinutes();
+  const ap=h>=12?'PM':'AM'; h=h%12||12;
+  return h+':'+pad(m)+'\u202F'+ap;
+}
+
+/* Format ms → "Xh Ym" */
+function fmtHM(ms){
+  return Math.floor(ms/3600000)+'h\u202F'+Math.floor((ms%3600000)/60000)+'m';
+}
+
+/* ─── TIMER STATE ─────────────────────────────────────────────── */
+/*
+   ACCURACY GUARANTEE:
+   elapsed = (now - sessionStart) - totalPaused - ongoingPauseDuration
+   This is computed fresh on every read using real wall-clock timestamps.
+   setInterval is ONLY used to refresh the visible display.
+   Therefore: sleeping laptop, throttled background tab, page refresh —
+   none of these affect accuracy. The number is always correct when read.
+*/
+let ts={status:'idle',sessionStart:null,pauseStart:null,totalPaused:0};
+let _iv=null;
+
+function saveTS(){localStorage.setItem(KEY_TIMER,JSON.stringify(ts));}
+function loadTS(){
+  try{const r=localStorage.getItem(KEY_TIMER);if(r)ts=JSON.parse(r);}catch(e){}
+}
+
+function elapsed(){
+  if(!ts.sessionStart)return 0;
+  // If currently paused, include ongoing pause duration in the subtraction
+  const op=(ts.status==='paused'&&ts.pauseStart)?(Date.now()-ts.pauseStart):0;
+  return Math.max(0,Date.now()-ts.sessionStart-ts.totalPaused-op);
+}
+
+function refreshDisplay(){
+  const t=fmtDur(elapsed());
+  document.getElementById('timer').textContent=t;
+  if(ts.status==='running') document.title='\u25B6\uFE0E '+t+' \u00B7 GATE 2027';
+  else if(ts.status==='paused') document.title='\u23F8\uFE0E '+t+' \u00B7 GATE 2027';
+  // Load sessions once and share across all dependent updates to avoid 4× localStorage reads per tick
+  const _sessions=loadSessions();
+  updateGoalBar(_sessions);
+  renderHeatmap(_sessions);
+  updateStatusCard(_sessions);
+  checkBreakReminder();
+  // BUG FIX: Update stat card elements live so they tick every second during a session.
+  // Previously these were only set inside renderLog() (called at boot and after Stop),
+  // so they froze at the boot value for the entire duration of a session.
+  if(ts.status==='running'||ts.status==='paused'){
+    const todayKey=dk(), e=elapsed();
+    const _todayMs =_sessions.filter(s=>(s.date||dk(s.startTs))===todayKey).reduce((a,s)=>a+s.duration,0)+e;
+    const _weekMs  =_sessions.filter(s=>inWeek(s.startTs)).reduce((a,s)=>a+s.duration,0)+e;
+    const _monthMs =_sessions.filter(s=>inMonth(s.startTs)).reduce((a,s)=>a+s.duration,0)+e;
+    const _allTime =_sessions.reduce((a,s)=>a+s.duration,0)+e;
+    document.getElementById('s-today').textContent  =fmtHM(_todayMs);
+    document.getElementById('s-week').textContent   =fmtHM(_weekMs);
+    document.getElementById('s-month').textContent  =fmtHM(_monthMs);
+    document.getElementById('s-alltime').textContent=fmtHM(_allTime);
+  }
+}
+
+/* Sync all button states and visuals to current status */
+function applyUI(st){
+  const bs=document.getElementById('b-start'),
+        bp=document.getElementById('b-pause'),
+        bx=document.getElementById('b-stop'),
+        td=document.getElementById('timer'),
+        tl=document.getElementById('tline');
+  bs.disabled = st!=='idle';
+  bp.disabled = st==='idle';
+  bx.disabled = st==='idle';
+  bp.textContent = st==='paused'?'Resume':'Pause';
+  td.classList.toggle('paused', st==='paused');
+  tl.classList.toggle('on',     st==='running');
+}
+
+/* ─── START ───────────────────────────────────────────────────── */
+function timerStart(){
+  if(ts.status!=='idle')return;
+  ts={status:'running',sessionStart:Date.now(),pauseStart:null,totalPaused:0};
+  // Hide any previous session summary card and clear its content
+  const sc=document.getElementById('scard');
+  sc.classList.remove('show');
+  document.getElementById('sc-kudos').textContent='';
+  document.getElementById('sc-dur').textContent='';
+  document.getElementById('sc-body').textContent='';
+  document.getElementById('tmeta').textContent='Started at\u202F'+fmtT(ts.sessionStart);
+  saveTS(); applyUI('running');
+  clearInterval(_iv); _iv=setInterval(refreshDisplay,1000); refreshDisplay();
+}
+
+/* ─── PAUSE / RESUME ──────────────────────────────────────────── */
+function timerPause(){
+  if(ts.status==='running'){
+    ts.pauseStart=Date.now(); ts.status='paused';
+    clearInterval(_iv); _iv=null;
+    // Snap display to exact elapsed at the moment of pause before freezing
+    refreshDisplay();
+  } else if(ts.status==='paused'){
+    ts.totalPaused+=Date.now()-ts.pauseStart;
+    ts.pauseStart=null; ts.status='running';
+    clearInterval(_iv); _iv=setInterval(refreshDisplay,1000); refreshDisplay();
+  }
+  saveTS(); applyUI(ts.status);
+}
+
+/* ─── STOP ────────────────────────────────────────────────────── */
+const KUDOS=[
+  "Shri Ji ki kripa se aaj ka session poora hua. \u2014 Radha Rani dekh rahi hain.",
+  "Har pal unki kripa thi. Ye waqt unka tha, unhe diya \u2014 bahut achha kiya.",
+  "Tu nimit tha, kaam Shri Ji ka tha. Aaj bhi unhi ne kiya.",
+  "Teri mehnat bhi unki, tera result bhi unka \u2014 bas naam le aur so ja.",
+  "Ek aur session \u2014 ek aur kripa. Jai Shri Radhe.",
+  "Jo tu nahi kar sakta tha, Shri Ji ne karaya. Shukriya unka.",
+  "Ye session Shri Ji ke charnon mein samarpit \u2014 ab nischint raho.",
+  "Roz ek kadam \u2014 Shri Ji baaki sambhalti hain. Aaj ka kadam uthaya.",
+  "Unki yaad mein ki gayi padhai kabhi vyarth nahi jaati.",
+];
+function timerStop(){
+  if(ts.status==='idle')return;
+  const endTs=Date.now(), dur=elapsed(), startTs=ts.sessionStart;
+
+  const kudos=KUDOS[Math.floor(Math.random()*KUDOS.length)];
+  document.getElementById('sc-kudos').textContent='\u201C'+kudos+'\u201D';
+  document.getElementById('sc-dur').textContent=fmtDur(dur);
+  document.getElementById('sc-body').textContent=
+    fmtT(startTs)+'\u2009\u2013\u2009'+fmtT(endTs);
+  document.getElementById('scard').classList.add('show');
+
+  // Only persist sessions longer than 30 seconds (avoids accidental clicks)
+  if(dur>=30000){
+    const arr=loadSessions();
+    arr.push({date:dk(startTs),startTs,endTs,duration:dur});
+    try{
+      localStorage.setItem(KEY_SESSIONS,JSON.stringify(arr));
+    }catch(e){
+      // Storage quota exceeded — warn user so data isn't silently lost
+      console.error('Storage quota exceeded:',e);
+      alert('⚠️ Storage full — this session could not be saved.\nPlease export your data and clear it to free up space.');
+    }
+  } else {
+    // Silently discard sessions under 30 seconds — update card to inform user
+    document.getElementById('sc-body').textContent='(Session under 30 seconds — not saved to log)';
+  }
+
+  // Full reset
+  ts={status:'idle',sessionStart:null,pauseStart:null,totalPaused:0};
+  clearInterval(_iv); _iv=null;
+  localStorage.removeItem(KEY_TIMER);
+  document.getElementById('timer').textContent='00:00:00';
+  document.getElementById('tmeta').textContent='\u00a0';
+  document.title='GATE 2027 \u00B7 Shriyash'; // reset tab title
+  _breakShown=false; // reset break reminder for next session
+  dismissBreak();
+  applyUI('idle');
+  renderLog();
+}
+
+/* ─── SESSION STORAGE ─────────────────────────────────────────── */
+function loadSessions(){
+  try{return JSON.parse(localStorage.getItem(KEY_SESSIONS))||[];}
+  catch(e){return[];}
+}
+
+/* ─── STREAK ──────────────────────────────────────────────────── */
+/*
+   Counts consecutive days (ending today or yesterday) with ≥1 session.
+   If today has study: count from today backward.
+   If today has no study yet: count from yesterday backward.
+   Safety cap: 730 iterations (2 years max).
+*/
+function calcStreak(byDay){
+  const cur=new Date();
+  if(!byDay[dk(cur.getTime())])cur.setDate(cur.getDate()-1);
+  let streak=0;
+  for(let i=0;i<730;i++){
+    if(!byDay[dk(cur.getTime())])break;
+    streak++; cur.setDate(cur.getDate()-1);
+  }
+  return streak;
+}
+
+/* ─── DAILY GOAL CONSTANT ─────────────────────────────────────── */
+/* 10h 40m — the exact total study window from the Dincharya schedule */
+const GOAL_MS = 10 * 3600000 + 40 * 60000;
+
+/* ─── STATUS CARD ─────────────────────────────────────────────── */
+function updateStatusCard(sessions){
+  sessions=sessions||loadSessions();
+  const today=dk();
+  let todayMs=0;
+  sessions.forEach(s=>{ if((s.date||dk(s.startTs))===today) todayMs+=s.duration; });
+  if(ts.status==='running'||ts.status==='paused') todayMs+=elapsed();
+
+  const hrs=todayMs/3600000;
+  const sc=document.getElementById('status-card');
+  const st=document.getElementById('sc-status-text');
+  const bar=document.getElementById('sc-bar-fill');
+  const lbl=document.getElementById('sc-hours-label');
+  const pct=Math.min(100,Math.round(todayMs/GOAL_MS*100));
+  if(bar) bar.style.width=pct+'%';
+  if(lbl) lbl.textContent=fmtHM(todayMs)+' studied';
+  if(sc&&st){
+    if(hrs>=9.5){st.textContent='Ranker';sc.className='status-card sc-great';}
+    else if(hrs>=7){st.textContent='Very Good';sc.className='status-card sc-good';}
+    else if(hrs>=4){st.textContent='Keep Going';sc.className='status-card sc-ok';}
+    else{st.textContent='Dusht & Paapi';sc.className='status-card sc-bad';}
+  }
+}
+
+/* ─── RENDER LOG ──────────────────────────────────────────────── */
+function renderLog(){
+  const sessions=loadSessions();
+  const today=dk();
+  let todayMs=0,weekMs=0,monthMs=0,allTime=0;
+  let todaySessions=[];
+  const byDay={};
+
+  sessions.forEach(s=>{
+    const key=s.date||dk(s.startTs);
+    allTime+=s.duration;
+    byDay[key]=(byDay[key]||0)+s.duration;
+    if(key===today){todayMs+=s.duration;todaySessions.push(s);}
+    if(inWeek(s.startTs)) weekMs+=s.duration;
+    if(inMonth(s.startTs)) monthMs+=s.duration;
+  });
+
+  // Average is computed from saved sessions only (stable, not inflated by live time)
+  const allDays=new Set(sessions.map(s=>s.date||dk(s.startTs))).size;
+  const avgMs=allDays>0?allTime/allDays:0;
+
+  // BUG FIX: Include the currently running/paused session in all stat totals and byDay.
+  // Without this: stats freeze at boot value; streak won't count today until you Stop.
+  if(ts.status==='running'||ts.status==='paused'){
+    const e=elapsed();
+    todayMs+=e; weekMs+=e; monthMs+=e; allTime+=e;
+    byDay[today]=(byDay[today]||0)+e; // ensures calcStreak counts today's live session
+  }
+
+  const streak=calcStreak(byDay);
+
+  document.getElementById('s-today').textContent  =fmtHM(todayMs);
+  document.getElementById('s-week').textContent   =fmtHM(weekMs);
+  document.getElementById('s-month').textContent  =fmtHM(monthMs);
+  document.getElementById('s-avg').textContent    =fmtHM(avgMs);
+  document.getElementById('s-streak').textContent =streak+(streak===1?'\u202Fday':'\u202Fdays');
+  document.getElementById('s-alltime').textContent=fmtHM(allTime);
+
+  // Update goal bar, heatmap, and status card — pass already-loaded sessions
+  updateGoalBar(sessions);
+  renderHeatmap(sessions);
+  updateStatusCard(sessions);
+
+  // Today's sessions list, newest first
+  const listEl=document.getElementById('log-list');
+  if(!todaySessions.length){
+    listEl.innerHTML='<div class="log-empty">No sessions yet.<br>Begin your sadhana.</div>';
+    return;
+  }
+  listEl.innerHTML=todaySessions.slice().reverse().map(s=>
+    `<div class="log-row">
+      <span class="log-time">${fmtT(s.startTs)}\u2009\u2013\u2009${fmtT(s.endTs)}</span>
+      <span class="log-dur">${fmtDur(s.duration)}</span>
+    </div>`
+  ).join('');
+}
+
+/* ─── DAILY GOAL BAR ──────────────────────────────────────────── */
+/*
+   Bar fills as today's total climbs toward GOAL_MS. Turns green at 100%.
+   Updates every second while running via refreshDisplay.
+*/
+function updateGoalBar(sessions){
+  sessions=sessions||loadSessions();
+  const today=dk();
+  let todayMs=0;
+  sessions.forEach(s=>{ if((s.date||dk(s.startTs))===today) todayMs+=s.duration; });
+  // Add live running session if active
+  if(ts.status==='running'||ts.status==='paused') todayMs+=elapsed();
+  const pct=Math.min(100,Math.round(todayMs/GOAL_MS*100));
+  const fill=document.getElementById('goal-fill');
+  const pctEl=document.getElementById('goal-pct');
+  if(!fill||!pctEl)return;
+  fill.style.width=pct+'%';
+  fill.classList.toggle('done',pct>=100);
+  pctEl.textContent=pct+'%';
+  pctEl.style.color=pct>=100?'#60c478':pct>=60?'var(--gold)':'var(--gold-dim)';
+}
+
+/* ─── BREAK REMINDER ──────────────────────────────────────────── */
+/*
+   After 90 continuous minutes, show a gentle toast.
+   Fires once per session — dismissed state resets on Stop/Start.
+   Why: research shows 90-min ultradian cycles; a break boosts retention.
+*/
+let _breakShown=false;
+let _breakTimer=null;
+const BREAK_MS=90*60*1000;
+function checkBreakReminder(){
+  if(_breakShown||ts.status!=='running') return;
+  if(elapsed()>=BREAK_MS){
+    _breakShown=true;
+    document.getElementById('break-toast').classList.add('show');
+    // Auto-dismiss after 12 seconds — clear any existing timer first
+    if(_breakTimer) clearTimeout(_breakTimer);
+    _breakTimer=setTimeout(dismissBreak,12000);
+  }
+}
+function dismissBreak(){
+  if(_breakTimer){clearTimeout(_breakTimer);_breakTimer=null;}
+  document.getElementById('break-toast').classList.remove('show');
+}
+
+/* ─── DATA EXPORT ─────────────────────────────────────────────── */
+function openExport(){
+  const sessions=loadSessions();
+  const total=sessions.reduce((a,s)=>a+s.duration,0);
+  const days=new Set(sessions.map(s=>s.date||dk(s.startTs))).size;
+  document.getElementById('exp-sub').textContent=
+    sessions.length+' session'+(sessions.length===1?'':'s')+' across '+days+' day'+(days===1?'':'s');
+  document.getElementById('exp-stats').textContent=
+    'Total studied: '+fmtHM(total)+
+    '  ·  Avg/day: '+fmtHM(days>0?total/days:0);
+  document.getElementById('export-modal').classList.add('open');
+}
+function closeExport(){
+  document.getElementById('export-modal').classList.remove('open');
+}
+// Close on backdrop click
+document.addEventListener('click',e=>{
+  const m=document.getElementById('export-modal');
+  if(e.target===m) closeExport();
+});
+// Close on Escape (only when export modal is open, don't trigger timerStop)
+document.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&document.getElementById('export-modal').classList.contains('open')){
+    e.stopImmediatePropagation();
+    closeExport();
+  }
+},{capture:true});
+
+function exportCSV(){
+  const sessions=loadSessions();
+  if(!sessions.length){alert('No sessions to export yet.');return;}
+  const header='Date,Start Time,End Time,Duration (HH:MM:SS),Duration (minutes)';
+  const rows=sessions.map(s=>{
+    const d=new Date(s.startTs);
+    const date=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    const durMins=Math.round(s.duration/60000);
+    return [date,fmtT(s.startTs),fmtT(s.endTs),fmtDur(s.duration),durMins].join(',');
+  });
+  const csv=[header,...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='gate-study-log-'+dk()+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 250);
+  closeExport();
+}
+
+function exportJSON(){
+  const sessions=loadSessions();
+  if(!sessions.length){alert('No sessions to export yet.');return;}
+  const payload={
+    exportedAt:new Date().toISOString(),
+    totalSessions:sessions.length,
+    totalMs:sessions.reduce((a,s)=>a+s.duration,0),
+    sessions
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='gate-study-backup-'+dk()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 250);
+  closeExport();
+}
+
+function copyText(){
+  const sessions=loadSessions();
+  const total=sessions.reduce((a,s)=>a+s.duration,0);
+  const days=new Set(sessions.map(s=>s.date||dk(s.startTs))).size;
+  const byDay={};
+  sessions.forEach(s=>{const k=s.date||dk(s.startTs);byDay[k]=(byDay[k]||0)+s.duration;});
+  const streak=calcStreak(byDay);
+  const allTime=fmtHM(total);
+  const avgDay=fmtHM(days>0?total/days:0);
+  const todayMs=byDay[dk()]||0;
+
+  const text=[
+    'GATE 2027 — Study Summary ('+new Date().toDateString()+')',
+    '─────────────────────────────',
+    'Today         : '+fmtHM(todayMs),
+    'All-Time      : '+allTime,
+    'Days Studied  : '+days,
+    'Avg / Day     : '+avgDay,
+    'Current Streak: '+streak+(streak===1?' day':' days'),
+    '─────────────────────────────',
+    'Exported from GATE 2027 Study Timer — Jai Shri Radhe 🙏'
+  ].join('\n');
+
+  navigator.clipboard.writeText(text)
+    .then(()=>{
+      const btn=document.getElementById('copy-btn-title');
+      const orig=btn.textContent;
+      btn.textContent='✅ Copied!';
+      setTimeout(()=>{btn.textContent=orig;},2000);
+    })
+    .catch(()=>alert('Copy failed — please copy manually:\n\n'+text));
+}
+
+function confirmClear(){
+  const sessions=loadSessions();
+  if(!sessions.length){alert('Nothing to clear.');return;}
+  const ok=confirm(
+    'Are you sure you want to delete ALL '+sessions.length+' sessions?\n\n'+
+    'Download a backup first — this cannot be undone.'
+  );
+  if(ok){
+    localStorage.removeItem(KEY_SESSIONS);
+    localStorage.removeItem(KEY_TIMER);
+    ts={status:'idle',sessionStart:null,pauseStart:null,totalPaused:0};
+    clearInterval(_iv); _iv=null;
+    _breakShown=false;
+    dismissBreak();
+    document.getElementById('timer').textContent='00:00:00';
+    document.getElementById('tmeta').textContent='\u00a0';
+    document.title='GATE 2027 \u00B7 Shriyash';
+    applyUI('idle');
+    renderLog();
+    closeExport();
+  }
+}
+
+/* ─── NIGHT SKY BACKGROUND ────────────────────────────────────── */
+(function(){
+  const canvas = document.getElementById('star-canvas');
+  const ctx    = canvas.getContext('2d');
+  const W = ()=>canvas.width, H = ()=>canvas.height;
+
+  // BUG FIX: nebulaDone must reset on resize so nebula rebuilds at new size.
+  // Previously it stayed true after resize, so the old wrong-sized canvas
+  // kept being stamped onto the resized main canvas.
+  let nebulaDone=false, nebulaCanvas=null;
+  // BUG FIX: Moon position must also recalculate on resize.
+  let moonX=null, moonY=null;
+
+  function resize(){
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    nebulaDone=false;         // force nebula rebuild at new dimensions
+    moonX=null; moonY=null;   // force moon reposition
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  /* ── 1. STARS ────────────────────────────────────────────────── */
+  const COLOURS=[
+    'rgba(196,162,70,','rgba(222,187,96,',
+    'rgba(116,96,42,', 'rgba(219,211,190,',
+  ];
+  function mkStar(){
+    const type=Math.random()<0.6?'drift':'twinkle';
+    return {
+      type,
+      x:Math.random()*window.innerWidth,
+      y:Math.random()*window.innerHeight,
+      r:Math.random()*1.1+0.3,
+      col:COLOURS[Math.floor(Math.random()*COLOURS.length)],
+      vx:(Math.random()-0.5)*0.18, vy:(Math.random()-0.5)*0.12,
+      phase:Math.random()*Math.PI*2,
+      freq:0.004+Math.random()*0.008,
+      baseAlpha:0.1+Math.random()*0.35,
+    };
+  }
+  const stars=Array.from({length:110},mkStar);
+
+  /* ── 2. MOON ─────────────────────────────────────────────────── */
+  /*
+     BUG FIX 1 — opacity was 0.038–0.05 (near-invisible).
+       Was: breathe = 0.038 + 0.012*sin(...)   → max 0.050
+       Now: breathe = 0.32  + 0.08 *sin(...)   → max 0.400
+     BUG FIX 2 — destination-out on the MAIN canvas was punching holes
+       through every star and nebula blob drawn before it, because compositing
+       affects the entire canvas, not just the current shape.
+       Fix: draw the crescent on an isolated offscreen canvas using
+       destination-out there, then stamp the result onto the main canvas
+       with globalAlpha — this scopes the hole-punch to the offscreen buffer.
+  */
+  const MOON_R=30;
+
+  function drawMoon(frame){
+    if(moonX===null){ moonX=W()*0.87; moonY=H()*0.11; }
+    const breathe=0.32+0.08*Math.sin(frame*0.003); // subtle slow pulse
+    const mx=moonX, my=moonY, mr=MOON_R;
+
+    // --- offscreen crescent (scopes destination-out) ---
+    const oc=document.createElement('canvas');
+    oc.width=Math.ceil((mr+4)*4); oc.height=Math.ceil((mr+4)*4);
+    const ox=oc.width/2, oy=oc.height/2;
+    const oc2=oc.getContext('2d');
+
+    // Halo glow
+    const halo=oc2.createRadialGradient(ox,oy,mr*0.5,ox,oy,mr*2.6);
+    halo.addColorStop(0,'rgba(196,162,70,0.18)');
+    halo.addColorStop(1,'rgba(196,162,70,0)');
+    oc2.fillStyle=halo;
+    oc2.beginPath();
+    oc2.arc(ox,oy,mr*2.6,0,Math.PI*2);
+    oc2.fill();
+
+    // Lit disc
+    const disc=oc2.createRadialGradient(ox-mr*0.25,oy-mr*0.25,mr*0.05,ox,oy,mr);
+    disc.addColorStop(0,'rgba(240,215,140,1)');
+    disc.addColorStop(0.55,'rgba(210,175,90,0.85)');
+    disc.addColorStop(1,'rgba(140,110,45,0.2)');
+    oc2.fillStyle=disc;
+    oc2.beginPath();
+    oc2.arc(ox,oy,mr,0,Math.PI*2);
+    oc2.fill();
+
+    // Crescent shadow — destination-out scoped to offscreen canvas only
+    oc2.globalCompositeOperation='destination-out';
+    oc2.fillStyle='rgba(0,0,0,1)';
+    oc2.beginPath();
+    oc2.arc(ox+mr*0.42, oy-mr*0.08, mr*0.86, 0, Math.PI*2);
+    oc2.fill();
+    oc2.globalCompositeOperation='source-over';
+
+    // Stamp onto main canvas at correct position, with breathe opacity
+    ctx.save();
+    ctx.globalAlpha=breathe;
+    ctx.drawImage(oc, mx-ox, my-oy);
+    ctx.restore();
+  }
+
+  /* ── 3. SHOOTING STARS ───────────────────────────────────────── */
+  let shooters=[];
+  let nextShoot=300+Math.floor(Math.random()*300);
+
+  function spawnShooter(){
+    const sx=Math.random()*W()*0.6;
+    const sy=Math.random()*H()*0.35;
+    const angle=(Math.PI/6)+(Math.random()*Math.PI/9);
+    const speed=5+Math.random()*4;
+    shooters.push({
+      x:sx, y:sy,
+      vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed,
+      length:90+Math.random()*80, life:1.0,
+      decay:0.022+Math.random()*0.012,
+    });
+  }
+
+  function drawShooters(){
+    shooters=shooters.filter(s=>s.life>0);
+    for(const s of shooters){
+      s.x+=s.vx; s.y+=s.vy; s.life-=s.decay;
+      const alpha=s.life*0.6;
+      const ang=Math.atan2(s.vy,s.vx);
+      const tx=s.x-Math.cos(ang)*s.length;
+      const ty=s.y-Math.sin(ang)*s.length;
+      const grad=ctx.createLinearGradient(tx,ty,s.x,s.y);
+      grad.addColorStop(0,'rgba(222,187,96,0)');
+      grad.addColorStop(0.6,`rgba(222,187,96,${(alpha*0.4).toFixed(3)})`);
+      grad.addColorStop(1,`rgba(235,215,140,${alpha.toFixed(3)})`);
+      ctx.save();
+      ctx.strokeStyle=grad; ctx.lineWidth=1.2; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(s.x,s.y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(s.x,s.y,1.1,0,Math.PI*2);
+      ctx.fillStyle=`rgba(240,220,160,${(alpha*0.9).toFixed(3)})`; ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* ── 4. NEBULA WISPS ─────────────────────────────────────────── */
+  /*
+     BUG FIX 3 — broken scale+coordinate math made wisps invisible.
+       Previous code called nc.scale(rx/max, ry/max) to make an ellipse,
+       then manually divided the arc center by those same scale factors —
+       which is wrong (you don't divide coords when using ctx.scale()).
+       Also the radialGradient was created in unscaled space while the
+       arc was drawn in scaled space, so gradient and shape mismatched.
+     BUG FIX 4 — opacity was 0.015–0.022 (completely invisible).
+       Now using 0.07–0.10, still soft and non-distracting.
+     Fix: use ctx.ellipse() which needs no manual coordinate juggling,
+       and create the gradient in the same unscaled coordinate space.
+  */
+  function buildNebula(){
+    nebulaCanvas=document.createElement('canvas');
+    nebulaCanvas.width=W(); nebulaCanvas.height=H();
+    const nc=nebulaCanvas.getContext('2d');
+    const wisps=[
+      {x:W()*0.14,y:H()*0.20,rx:W()*0.20,ry:H()*0.13,col:[196,162,70],a:0.09},
+      {x:W()*0.72,y:H()*0.54,rx:W()*0.16,ry:H()*0.11,col:[116, 96,42],a:0.07},
+      {x:W()*0.42,y:H()*0.80,rx:W()*0.22,ry:H()*0.09,col:[196,162,70],a:0.07},
+    ];
+    for(const w of wisps){
+      // Gradient uses the larger radius so it fills the ellipse properly
+      const maxR=Math.max(w.rx,w.ry);
+      const g=nc.createRadialGradient(w.x,w.y,0,w.x,w.y,maxR);
+      g.addColorStop(0,`rgba(${w.col},${w.a})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      nc.save();
+      // Scale y-axis to squash circle into ellipse — gradient stays in original space
+      nc.translate(w.x,w.y);
+      nc.scale(1, w.ry/w.rx);
+      nc.translate(-w.x,-w.y);
+      nc.fillStyle=g;
+      nc.beginPath();
+      nc.arc(w.x,w.y,w.rx,0,Math.PI*2);
+      nc.fill();
+      nc.restore();
+    }
+    nebulaDone=true;
+  }
+
+  /* ── MAIN LOOP ───────────────────────────────────────────────── */
+  let frame=0;
+  function draw(){
+    frame++;
+    ctx.clearRect(0,0,W(),H());
+
+    // Nebula (pre-rendered offscreen, rebuilt on resize)
+    if(!nebulaDone) buildNebula();
+    if(nebulaCanvas) ctx.drawImage(nebulaCanvas,0,0);
+
+    // Moon (crescent on isolated offscreen buffer — safe compositing)
+    drawMoon(frame);
+
+    // Stars
+    for(const p of stars){
+      if(p.type==='drift'){
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.x<-4) p.x=W()+4; if(p.x>W()+4) p.x=-4;
+        if(p.y<-4) p.y=H()+4; if(p.y>H()+4) p.y=-4;
+      }
+      const alpha=p.baseAlpha*(0.45+0.55*Math.abs(Math.sin(frame*p.freq+p.phase)));
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.col+alpha.toFixed(3)+')'; ctx.fill();
+    }
+
+    // Shooting stars
+    if(--nextShoot<=0){
+      spawnShooter();
+      nextShoot=480+Math.floor(Math.random()*540);
+    }
+    drawShooters();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/*
+   Space  → Start if idle, Pause/Resume if active
+   Escape → Stop (only if session is active — prevents accidental stops)
+   Why: hands on keyboard while studying = zero friction to control timer.
+   Guard: ignore if focus is on an input element.
+*/
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  // BUG FIX: Ignore Space/Escape shortcuts while the export modal is open.
+  // Previously Space would pause/resume the timer in the background while the modal was visible.
+  if(document.getElementById('export-modal').classList.contains('open')) return;
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(ts.status==='idle') timerStart();
+    else timerPause();
+  } else if(e.code==='Escape'){
+    if(ts.status!=='idle') timerStop();
+  }
+});
+
+/* ─── SCHEDULE / "RIGHT NOW" ──────────────────────────────────── */
+/*
+   Schedule is stored as blocks: [startMinutes, endMinutes, label, isStudy]
+   Times are minutes from midnight (0 = 12:00 AM).
+   Covers the full 24h. "Sleep" fills the gap before 3 AM.
+*/
+const SCHEDULE = [
+  [  0,  180, 'Sleep',                          false],
+  [180,  190, '🌅 Rise Seva',                   false],
+  [190,  300, '📖 Study Block I',               true ],
+  [300,  310, '🪔 Mangala',                     false],
+  [310,  375, '🧘 Exercise · Yoga · Bath',      false],
+  [375,  480, '🌸 Morning Seva',                false],
+  [480,  720, '📖 Study Block II',              true ],
+  [720,  780, '🍽 Lunch Break',                 false],
+  [780,  900, '📖 Study Block III',             true ],
+  [900,  910, '🪔 Uthapan Seva',               false],
+  [910, 1080, '📖 Study Block IV',              true ],
+  [1080,1110, '🌆 Sandhya Seva',               false],
+  [1110,1320, '🙏 Spiritual Session',           false],
+  [1320,1440, 'Sleep',                          false],
+];
+
+function fmtMinLeft(mins){
+  const h=Math.floor(mins/60), m=mins%60;
+  if(h>0&&m>0) return h+'h '+m+'m left';
+  if(h>0) return h+'h left';
+  return m+'m left';
+}
+
+function tickNow(){
+  const now=new Date();
+  const cur=now.getHours()*60+now.getMinutes();
+  let block=SCHEDULE[SCHEDULE.length-1];
+  for(const b of SCHEDULE){
+    if(cur>=b[0]&&cur<b[1]){block=b;break;}
+  }
+  const [start,end,name,isStudy]=block;
+  const dur=end-start;
+  const blockElapsed=cur-start;
+  const minsLeft=end-cur;
+  const pct=Math.min(100,Math.round(blockElapsed/dur*100));
+
+  // Find next block name
+  const idx=SCHEDULE.indexOf(block);
+  const next=SCHEDULE[idx+1]||SCHEDULE[0];
+
+  const wrap=document.getElementById('now-wrap');
+  wrap.className='now-wrap'+(isStudy?' study-block':'');
+
+  document.getElementById('now-label').textContent=
+    isStudy?'Study Block · On Schedule':'Schedule Block';
+  document.getElementById('now-block-name').textContent=name;
+  document.getElementById('now-time-left').textContent=fmtMinLeft(minsLeft);
+  document.getElementById('now-next').textContent='Next: '+next[2];
+  document.getElementById('now-progress-fill').style.width=pct+'%';
+}
+tickNow();
+setInterval(tickNow, 30000); // refresh every 30s
+
+/* ─── 7-DAY HEATMAP ───────────────────────────────────────────── */
+/*
+   Renders Mon–Sun for the current week.
+   Each box fills bottom-up proportional to goal % that day.
+   Today gets a gold border ring.
+*/
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function renderHeatmap(sessions){
+  sessions=sessions||loadSessions();
+  const now=new Date();
+  const todayStr=dk();
+
+  // Build study-ms per day-key map
+  const byDay={};
+  sessions.forEach(s=>{
+    const k=s.date||dk(s.startTs);
+    byDay[k]=(byDay[k]||0)+s.duration;
+  });
+  // Add live session to today
+  if(ts.status==='running'||ts.status==='paused'){
+    byDay[todayStr]=(byDay[todayStr]||0)+elapsed();
+  }
+
+  // Get Mon of current week
+  const dow=(now.getDay()+6)%7; // 0=Mon
+  const mon=new Date(now);
+  mon.setDate(now.getDate()-dow);
+  mon.setHours(0,0,0,0);
+
+  let weekMs=0;
+  const boxes=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(mon); d.setDate(mon.getDate()+i);
+    const dkey=dk(d.getTime());
+    const ms=byDay[dkey]||0;
+    weekMs+=ms;
+    const pct=Math.min(100,ms/GOAL_MS*100);
+    const isToday=dkey===todayStr;
+    const isFuture=d>now&&!isToday;
+    boxes.push({label:DAYS[i],pct,isToday,isFuture,ms});
+  }
+
+  const container=document.getElementById('heatmap');
+  container.innerHTML=boxes.map(b=>`
+    <div class="heat-day">
+      <div class="heat-box${b.isToday?' today':''}">
+        ${!b.isFuture&&b.pct>0?`<div class="heat-fill${b.pct>=100?' full':''}" style="height:${b.pct}%"></div>`:''}
+      </div>
+      <span class="heat-day-lbl${b.isToday?' today':''}">${b.label}</span>
+    </div>`).join('');
+
+  document.getElementById('heat-week-total').textContent=
+    weekMs>0?fmtHM(weekMs):'';
+}
+
+/* ─── BACKGROUND TAB ──────────────────────────────────────────── */
+/*
+   When switching back from a lecture tab, Chrome may throttle
+   setInterval for up to 1 minute. visibilitychange catches the
+   return and immediately snaps the display to the correct time.
+   The underlying elapsed() is always correct since it uses Date.now().
+*/
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){
+    if(ts.status==='running'||ts.status==='paused')refreshDisplay();
+    tickNow(); // Right Now block could be stale after background tab
+  }
+});
+
+/* ─── BOOT ────────────────────────────────────────────────────── */
+loadTS();
+
+if(ts.status==='running'){
+  document.getElementById('tmeta').textContent='Started at\u202F'+fmtT(ts.sessionStart);
+  clearInterval(_iv); _iv=setInterval(refreshDisplay,1000); refreshDisplay();
+  applyUI('running');
+} else if(ts.status==='paused'){
+  document.getElementById('tmeta').textContent='Started at\u202F'+fmtT(ts.sessionStart);
+  refreshDisplay(); applyUI('paused');
+} else {
+  applyUI('idle');
+}
+
+renderLog();
+// renderHeatmap is called inside renderLog(); tickNow is called above at boot.
+</script>
+</body>
+</html>
