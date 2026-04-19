@@ -575,14 +575,6 @@
     .log-list::-webkit-scrollbar-track { background: transparent; }
     .log-list::-webkit-scrollbar-thumb { background: rgba(196,162,70,0.14); border-radius: 2px; }
 
-    .log-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(196,162,70,0.05);
-    }
-
     .log-row:last-child { border-bottom: none; }
 
     .log-time {
@@ -898,6 +890,116 @@
       padding: 0;
     }
     .bt-dismiss:hover { color: var(--text-sub); }
+
+    /* ── Session discard button ──────────────────────────────────*/
+    .log-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(196,162,70,0.05);
+      gap: 6px;
+    }
+    .log-discard {
+      flex-shrink: 0;
+      background: none;
+      border: 1px solid rgba(184,82,72,0.18);
+      border-radius: 2px;
+      color: rgba(184,82,72,0.45);
+      font-size: 0.6rem;
+      cursor: pointer;
+      padding: 2px 5px;
+      line-height: 1;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: var(--mono);
+    }
+    .log-discard:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Discard live session button ─────────────────────────────*/
+    .btn-discard {
+      border-color: rgba(184,82,72,0.22);
+      color: rgba(184,82,72,0.5);
+    }
+    .btn-discard:hover { border-color: var(--red); color: var(--red); background: rgba(184,82,72,0.05); }
+
+    /* ── Add Hours modal (reuses export-modal base) ─────────────*/
+    .add-hours-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6,6,13,0.82);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      backdrop-filter: blur(4px);
+    }
+    .add-hours-modal.open { opacity: 1; pointer-events: auto; }
+    .add-hours-box {
+      background: #0e0e1c;
+      border: 1px solid rgba(196,162,70,0.2);
+      border-radius: 5px;
+      padding: 28px 32px;
+      min-width: 320px;
+      max-width: 400px;
+      position: relative;
+      transform: translateY(12px);
+      transition: transform 0.3s;
+    }
+    .add-hours-modal.open .add-hours-box { transform: translateY(0); }
+    .add-hours-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,162,70,0.5), transparent);
+    }
+    .ah-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 14px;
+    }
+    .ah-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .ah-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    .ah-input:focus { outline: none; border-color: rgba(196,162,70,0.35); }
+    .ah-row { display: flex; gap: 10px; }
+    .ah-row .ah-field { flex: 1; }
+    .ah-submit {
+      font-family: var(--font);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 11px;
+      border-radius: 2px;
+      border: 1px solid var(--gold);
+      color: var(--gold-bright);
+      background: rgba(196,162,70,0.07);
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+      transition: background 0.16s;
+    }
+    .ah-submit:hover { background: rgba(196,162,70,0.14); }
+
     /* ── Data Export Panel ───────────────────────────────────────
        Slide-up panel from the bottom of the right panel.
        Three options: CSV (spreadsheet), JSON (backup), Clear data.
@@ -1238,6 +1340,7 @@
         <button class="btn btn-start" id="b-start" onclick="timerStart()" title="Start a new study session">Start</button>
         <button class="btn btn-pause" id="b-pause" onclick="timerPause()" disabled title="Pause or resume the current session">Pause</button>
         <button class="btn btn-stop"  id="b-stop"  onclick="timerStop()"  disabled title="End session and save to log">Stop</button>
+        <button class="btn btn-discard" id="b-discard" onclick="discardLive()" disabled title="Discard current session without saving (e.g. after a power cut)">Discard</button>
       </div>
 
       <div class="kb-hint">
@@ -1290,7 +1393,10 @@
       <!-- Study Log -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div class="panel-lbl" style="margin-bottom:0">Study Log</div>
-        <button class="export-btn" onclick="openExport()" title="Export or backup your study data">⬇ Export</button>
+        <div style="display:flex;gap:6px">
+          <button class="export-btn" onclick="openAddHours()" title="Manually add a study session">+ Add Hours</button>
+          <button class="export-btn" onclick="openExport()" title="Export or backup your study data">⬇ Export</button>
+        </div>
       </div>
 
       <!-- Daily goal progress bar — 11h target, instant visual motivation -->
@@ -1346,12 +1452,48 @@
         <div class="exp-option-title" id="copy-btn-title">📋 Copy Summary Text</div>
         <div class="exp-option-desc">Copies a clean plain-text summary — total time, streak, daily average — to your clipboard.</div>
       </button>
-      <button class="exp-option danger" onclick="confirmClear()">
+      <button class="exp-option danger" onclick="confirmClear('today')">
+        <div class="exp-option-title">🗑 Clear Today</div>
+        <div class="exp-option-desc">Removes only today's saved sessions. Useful after a power cut ruined your day's data.</div>
+      </button>
+      <button class="exp-option danger" onclick="confirmClear('week')">
+        <div class="exp-option-title">🗑 Clear This Week</div>
+        <div class="exp-option-desc">Removes all sessions from the current Mon–Sun week.</div>
+      </button>
+      <button class="exp-option danger" onclick="confirmClear('month')">
+        <div class="exp-option-title">🗑 Clear This Month</div>
+        <div class="exp-option-desc">Removes all sessions from the current calendar month.</div>
+      </button>
+      <button class="exp-option danger" onclick="confirmClear('all')">
         <div class="exp-option-title">🗑 Clear All Data</div>
         <div class="exp-option-desc">Permanently deletes all session history. Download a backup first. Cannot be undone.</div>
       </button>
     </div>
     <button class="exp-close" onclick="closeExport()">Close</button>
+  </div>
+</div>
+
+<!-- Add Hours modal — for manual session entry -->
+<div class="add-hours-modal" id="add-hours-modal" role="dialog" aria-modal="true" aria-labelledby="ah-modal-title">
+  <div class="add-hours-box">
+    <div class="exp-title" id="ah-modal-title">Add Study Hours</div>
+    <div class="exp-sub" style="margin-bottom:18px">Manually log time you studied without the timer — e.g. studying on paper, offline, or another device.</div>
+    <div class="ah-field">
+      <label class="ah-label" for="ah-date">Date</label>
+      <input class="ah-input" type="date" id="ah-date" />
+    </div>
+    <div class="ah-row">
+      <div class="ah-field">
+        <label class="ah-label" for="ah-hours">Hours</label>
+        <input class="ah-input" type="number" id="ah-hours" min="0" max="23" value="1" />
+      </div>
+      <div class="ah-field">
+        <label class="ah-label" for="ah-minutes">Minutes</label>
+        <input class="ah-input" type="number" id="ah-minutes" min="0" max="59" value="0" />
+      </div>
+    </div>
+    <button class="ah-submit" onclick="saveManualHours()">Save Session</button>
+    <button class="exp-close" onclick="closeAddHours()">Cancel</button>
   </div>
 </div>
 
@@ -1623,11 +1765,13 @@ function applyUI(st){
   const bs=document.getElementById('b-start'),
         bp=document.getElementById('b-pause'),
         bx=document.getElementById('b-stop'),
+        bd=document.getElementById('b-discard'),
         td=document.getElementById('timer'),
         tl=document.getElementById('tline');
   bs.disabled = st!=='idle';
   bp.disabled = st==='idle';
   bx.disabled = st==='idle';
+  bd.disabled = st==='idle';
   bp.textContent = st==='paused'?'Resume':'Pause';
   td.classList.toggle('paused', st==='paused');
   tl.classList.toggle('on',     st==='running');
@@ -1712,6 +1856,40 @@ function timerStop(){
   _breakShown=false; // reset break reminder for next session
   dismissBreak();
   applyUI('idle');
+  renderLog();
+}
+
+/* ─── DISCARD LIVE SESSION ────────────────────────────────────── */
+/*
+   Used after a power cut or accidental start — throws away the current
+   session without saving it, and resets the timer to idle.
+*/
+function discardLive(){
+  if(ts.status==='idle')return;
+  const ok=confirm('Discard current session without saving?\n\nUse this after a power cut or accidental start.');
+  if(!ok)return;
+  ts={status:'idle',sessionStart:null,pauseStart:null,totalPaused:0};
+  clearInterval(_iv); _iv=null;
+  localStorage.removeItem(KEY_TIMER);
+  document.getElementById('timer').textContent='00:00:00';
+  document.getElementById('tmeta').textContent='\u00a0';
+  document.title='GATE 2027 \u00B7 Shriyash';
+  _breakShown=false;
+  dismissBreak();
+  applyUI('idle');
+  renderLog();
+}
+
+/* ─── DISCARD SAVED SESSION ───────────────────────────────────── */
+/*
+   Removes a specific saved session by its startTs (unique timestamp).
+   Called from the ✕ button on each today's-session row.
+*/
+function discardSession(startTs){
+  const ok=confirm('Remove this session from the log?\n\nThis cannot be undone.');
+  if(!ok)return;
+  const arr=loadSessions().filter(s=>s.startTs!==startTs);
+  localStorage.setItem(KEY_SESSIONS,JSON.stringify(arr));
   renderLog();
 }
 
@@ -1818,8 +1996,9 @@ function renderLog(){
   }
   listEl.innerHTML=todaySessions.slice().reverse().map(s=>
     `<div class="log-row">
-      <span class="log-time">${fmtT(s.startTs)}\u2009\u2013\u2009${fmtT(s.endTs)}</span>
+      <span class="log-time">${s.manual?'Manual entry':fmtT(s.startTs)+'\u2009\u2013\u2009'+fmtT(s.endTs)}</span>
       <span class="log-dur">${fmtDur(s.duration)}</span>
+      <button class="log-discard" onclick="discardSession(${s.startTs})" title="Discard this session">✕</button>
     </div>`
   ).join('');
 }
@@ -1885,6 +2064,51 @@ function openExport(){
 function closeExport(){
   document.getElementById('export-modal').classList.remove('open');
 }
+
+/* ─── ADD HOURS MANUALLY ──────────────────────────────────────── */
+function openAddHours(){
+  // Default date to today
+  const d=new Date();
+  const dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  document.getElementById('ah-date').value=dateStr;
+  document.getElementById('ah-hours').value='1';
+  document.getElementById('ah-minutes').value='0';
+  document.getElementById('add-hours-modal').classList.add('open');
+}
+function closeAddHours(){
+  document.getElementById('add-hours-modal').classList.remove('open');
+}
+function saveManualHours(){
+  const dateVal=document.getElementById('ah-date').value;
+  const hrs=parseInt(document.getElementById('ah-hours').value)||0;
+  const mins=parseInt(document.getElementById('ah-minutes').value)||0;
+
+  if(!dateVal){alert('Please select a date.');return;}
+  if(hrs===0&&mins===0){alert('Please enter a duration greater than 0.');return;}
+  if(hrs<0||mins<0||mins>59||hrs>23){alert('Invalid hours or minutes.');return;}
+
+  const durMs=(hrs*3600+mins*60)*1000;
+  // Use noon on the selected date as a synthetic startTs so inWeek/inMonth work correctly
+  const startTs=new Date(dateVal+'T12:00:00').getTime();
+  const endTs=startTs+durMs;
+  const dateKey=dateVal; // already in YYYY-MM-DD
+
+  const arr=loadSessions();
+  arr.push({date:dateKey,startTs,endTs,duration:durMs,manual:true});
+  try{
+    localStorage.setItem(KEY_SESSIONS,JSON.stringify(arr));
+  }catch(e){
+    alert('Storage full — could not save. Please export and clear old data.');
+    return;
+  }
+  closeAddHours();
+  renderLog();
+}
+// Close Add Hours modal on backdrop click
+document.addEventListener('click',e=>{
+  const m=document.getElementById('add-hours-modal');
+  if(e.target===m) closeAddHours();
+});
 // Close on backdrop click
 document.addEventListener('click',e=>{
   const m=document.getElementById('export-modal');
@@ -1895,6 +2119,10 @@ document.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&document.getElementById('export-modal').classList.contains('open')){
     e.stopImmediatePropagation();
     closeExport();
+  }
+  if(e.code==='Escape'&&document.getElementById('add-hours-modal').classList.contains('open')){
+    e.stopImmediatePropagation();
+    closeAddHours();
   }
 },{capture:true});
 
@@ -1969,15 +2197,54 @@ function copyText(){
     .catch(()=>alert('Copy failed — please copy manually:\n\n'+text));
 }
 
-function confirmClear(){
+function confirmClear(scope){
   const sessions=loadSessions();
   if(!sessions.length){alert('Nothing to clear.');return;}
+
+  let filtered, label;
+  if(scope==='today'){
+    const today=dk();
+    filtered=sessions.filter(s=>(s.date||dk(s.startTs))===today);
+    label="today's";
+  } else if(scope==='week'){
+    filtered=sessions.filter(s=>inWeek(s.startTs));
+    label="this week's";
+  } else if(scope==='month'){
+    filtered=sessions.filter(s=>inMonth(s.startTs));
+    label="this month's";
+  } else {
+    filtered=sessions;
+    label='ALL';
+  }
+
+  if(!filtered.length){alert('No sessions found for that period.');return;}
+
   const ok=confirm(
-    'Are you sure you want to delete ALL '+sessions.length+' sessions?\n\n'+
-    'Download a backup first — this cannot be undone.'
+    'Delete '+filtered.length+' '+label+' session'+(filtered.length===1?'':'s')+'?\n\n'+
+    (scope==='all'?'Download a backup first — ':'')+'This cannot be undone.'
   );
-  if(ok){
+  if(!ok)return;
+
+  let remaining;
+  if(scope==='today'){
+    const today=dk();
+    remaining=sessions.filter(s=>(s.date||dk(s.startTs))!==today);
+  } else if(scope==='week'){
+    remaining=sessions.filter(s=>!inWeek(s.startTs));
+  } else if(scope==='month'){
+    remaining=sessions.filter(s=>!inMonth(s.startTs));
+  } else {
+    remaining=[];
+  }
+
+  if(remaining.length){
+    localStorage.setItem(KEY_SESSIONS,JSON.stringify(remaining));
+  } else {
     localStorage.removeItem(KEY_SESSIONS);
+  }
+
+  // If clearing all, also reset live timer state
+  if(scope==='all'){
     localStorage.removeItem(KEY_TIMER);
     ts={status:'idle',sessionStart:null,pauseStart:null,totalPaused:0};
     clearInterval(_iv); _iv=null;
@@ -1987,9 +2254,10 @@ function confirmClear(){
     document.getElementById('tmeta').textContent='\u00a0';
     document.title='GATE 2027 \u00B7 Shriyash';
     applyUI('idle');
-    renderLog();
-    closeExport();
   }
+
+  renderLog();
+  closeExport();
 }
 
 /* ─── NIGHT SKY BACKGROUND ────────────────────────────────────── */
@@ -2222,6 +2490,7 @@ document.addEventListener('keydown', e=>{
   // BUG FIX: Ignore Space/Escape shortcuts while the export modal is open.
   // Previously Space would pause/resume the timer in the background while the modal was visible.
   if(document.getElementById('export-modal').classList.contains('open')) return;
+  if(document.getElementById('add-hours-modal').classList.contains('open')) return;
   if(e.code==='Space'){
     e.preventDefault();
     if(ts.status==='idle') timerStart();
